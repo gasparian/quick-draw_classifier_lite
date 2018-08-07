@@ -420,7 +420,7 @@ if __name__ == '__main__':
     print("[INFO] training network...")
 
     H = model.fit_generator(reader.run_generator(val_mode=False),
-            steps_per_epoch=train_steps, epochs=nbepochs, shuffle=False, verbose=2,
+            steps_per_epoch=train_steps, epochs=nbepochs, shuffle=False, verbose=1,
             validation_data=reader.run_generator(val_mode=True), validation_steps=val_steps,
             use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
