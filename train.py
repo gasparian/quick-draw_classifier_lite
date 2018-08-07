@@ -1,10 +1,15 @@
 import os
 import argparse
+from shutil import rmtree
+import struct
+from struct import unpack
 
 import tensorflow as tf
 import numpy as np
 from numpy.random import RandomState
 import cv2
+from PIL import Image
+from PIL import ImageDraw
 from tqdm import tqdm
 
 # import matplotlib.pyplot as plt
@@ -176,13 +181,24 @@ def unpack_drawing(file_handle):
         'image': image
     }
 
+def dist(a, b):
+    return np.power((np.power((a[0] - b[0]), 2) + np.power((a[1] - b[1]), 2)), 1./2)
+
+def min_max(coords):
+    x, y = [], []
+    for i in range(len(coords)):
+        x.append(int(min(coords[i][0]))); x.append(int(max(coords[i][0])))
+        y.append(int(min(coords[i][1]))); y.append(int(max(coords[i][1])))
+    return min(x), max(x), min(y), max(y)
+
 class QDPrep:
 
-	def __init__(self, path, to_drop, random_state=42, chunksize=64, max_dataset_size=5000000, 
+	def __init__(self, path, to_drop, random_state=42, chunksize=64, max_dataset_size=5000000, trsh=100,
 					train_portion=0.9, k=0.05, min_points=3, min_edges=3, dotSize=3, offset=5, img_size=(64,64)):
 		self.prng = RandomState(random_state)
 		self.dotSize = dotSize
 		self.offset = offset
+		self.trsh = trsh
 		self.img_size = img_size
 		self.max_dataset_size = max_dataset_size
 		self.train_portion = int(max_dataset_size * train_portion)
@@ -244,14 +260,6 @@ class QDPrep:
 	    return len(points) - 1
 
 	def quickdraw_coords2img(self, image):
-
-	    def min_max(coords):
-	        x, y = [], []
-	        for i in range(len(coords)):
-	            x.append(int(min(coords[i][0]))); x.append(int(max(coords[i][0])))
-	            y.append(int(min(coords[i][1]))); y.append(int(max(coords[i][1])))
-	        return min(x), max(x), min(y), max(y)
-
 	    image = np.array([[list(j) for j in i] for i in image])
 	    if self.img_size:
 	        min_dists, dists = {}, [[] for i in range(len(image))]
@@ -312,7 +320,7 @@ class QDPrep:
 
 			    img = np.array(self.quickdraw_coords2img(coords)['img'])
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-                #img = cv2.bitwise_not(img)
+                img = cv2.bitwise_not(img)
                 img = cv2.resize(img, self.img_size, Image.LANCZOS)
                 img = cv2.threshold(img, self.trsh, 255,
                         cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
@@ -340,7 +348,9 @@ def get_available_gpus():
 
 if __name__ == '__main__':
 
-	parser = argparse.ArgumentParser(description='quickDraw classifier')
+	#python3 train.py -G 2 -p /home/quick-draw/data  /home/quick-draw/models
+
+    parser = argparse.ArgumentParser(description='quickDraw classifier')
     parser.add_argument('-g', '--G', type=int, default=1)
     parser.add_argument('-p', '--path')
     parser.add_argument('-n', '--name')
@@ -349,14 +359,20 @@ if __name__ == '__main__':
 
     print("[INFO] GPU devices:%s" % get_available_gpus())
 
+    try:
+        rmtree(name)
+    except:
+        pass
+    os.mkdir(name)
+
     ################################################################################
 
     batch_size = 64 * G
+    nbepochs = 10
     reader = QDPrep(path, [], random_state=42, chunksize=batch_size, 
-    						  max_dataset_size=1000000, 
+    						  max_dataset_size=1000000, trsh=100,
 							  train_portion=0.9, k=0.05, min_points=9, 
 							  min_edges=3, dotSize=3, offset=5, img_size=(64,64))
-    nbepochs = 10
 
     ################################################################################
 
@@ -377,21 +393,21 @@ if __name__ == '__main__':
 	adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, decay=0.0, clipnorm=5)
 	model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=["accuracy", top_5_accuracy])
 	model_json = model.to_json()
-	with open(path+'/'+name+"/model.json", "w") as json_file:
+	with open(name+"/model.json", "w") as json_file:
 	    json_file.write(model_json)
 
-	checkpoint = ModelCheckpoint(path+'/%s/checkpoint_model.h5'%name, monitor='val_loss', verbose=1, 
+	checkpoint = ModelCheckpoint(name+'/checkpoint_model.h5', monitor='val_loss', verbose=1, 
 	                 save_best_only=True, mode='min', save_weights_only = False)
 	clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=2000., mode='exp_range', gamma=0.99994)
 
 	print("[INFO] training network...")
 
-	train_steps = reader.train_portion // (batch_size * G)
-	val_steps = (reader.max_dataset_size - reader.train_portion) // (batch_size * G)
+	train_steps = reader.train_portion // batch_size
+	val_steps = (reader.max_dataset_size - reader.train_portion) // batch_size
 	H = model.fit_generator(reader.run_generator(val_mode=False),
 	        steps_per_epoch=train_steps, epochs=nbepochs, shuffle=False, verbose=1,
 	        validation_data=reader.run_generator(val_mode=True), validation_steps=val_steps,
 	        use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
-	pickle.dump(H.history, open(path+'/'+name+'/loss_history.pickle.dat', 'wb'))
+	pickle.dump(H.history, open(name+'/loss_history.pickle.dat', 'wb'))
 	print("[INFO] Finished!")
