@@ -348,7 +348,7 @@ def get_available_gpus():
 
 if __name__ == '__main__':
 
-	#python3 train.py -G 2 -p /home/quick-draw/data  /home/quick-draw/models
+	#python3 train.py -G 2 -p /home/quick-draw/data  /home/quick-draw_classifier/models
 
     parser = argparse.ArgumentParser(description='quickDraw classifier')
     parser.add_argument('-g', '--G', type=int, default=1)
