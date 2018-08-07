@@ -5,7 +5,6 @@ import argparse
 from shutil import rmtree
 from struct import unpack
 
-
 import tensorflow as tf
 import numpy as np
 from numpy.random import RandomState
@@ -377,7 +376,7 @@ if __name__ == '__main__':
     ################################################################################
 
     batch_size = 64 * G
-    nbepochs = 10
+    nbepochs = 3
     reader = QDPrep(path, [], random_state=42, chunksize=batch_size, 
                               max_dataset_size=1000000, trsh=100, normed=True,
                               train_portion=0.9, k=0.05, min_points=10, 
