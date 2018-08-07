@@ -402,6 +402,9 @@ if __name__ == '__main__':
     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, decay=0.0, clipnorm=5)
     model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=["accuracy", top_5_accuracy])
     model.summary()
+
+    with open(name + '/model_summary.txt','w') as f:
+            model.summary(print_fn=lambda x: f.write(x + '\n'))
     model_json = model.to_json()
     with open(name+"/model.json", "w") as json_file:
         json_file.write(model_json)
