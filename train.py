@@ -4,6 +4,7 @@ import struct
 import argparse
 from shutil import rmtree
 from struct import unpack
+import pickle
 
 import tensorflow as tf
 import numpy as np
@@ -414,7 +415,7 @@ if __name__ == '__main__':
 
     checkpoint = ModelCheckpoint(name+'/checkpoint_weights.h5', monitor='val_loss', verbose=1, 
                      save_best_only=True, mode='min', save_weights_only=True)
-    clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps*2.5, mode='exp_range', gamma=0.99994)
+    clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps*2, mode='exp_range', gamma=0.99994)
 
     print("[INFO] training network...")
 
