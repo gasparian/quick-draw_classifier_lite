@@ -409,8 +409,8 @@ if __name__ == '__main__':
     with open(name+"/model.json", "w") as json_file:
         json_file.write(model_json)
 
-    checkpoint = ModelCheckpoint(name+'/checkpoint_model.h5', monitor='val_loss', verbose=2, 
-                     save_best_only=True, mode='min', save_weights_only = False)
+    checkpoint = ModelCheckpoint(name+'/checkpoint_model.h5', monitor='val_loss', verbose=1, 
+                     save_best_only=True, mode='min', save_weights_only=True)
     clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=2000., mode='exp_range', gamma=0.99994)
 
     print("[INFO] training network...")
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     train_steps = reader.train_portion // batch_size
     val_steps = (reader.max_dataset_size - reader.train_portion) // batch_size
     H = model.fit_generator(reader.run_generator(val_mode=False),
-            steps_per_epoch=train_steps, epochs=nbepochs, shuffle=False, verbose=1,
+            steps_per_epoch=train_steps, epochs=nbepochs, shuffle=False, verbose=2,
             validation_data=reader.run_generator(val_mode=True), validation_steps=val_steps,
             use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
