@@ -309,7 +309,7 @@ class QDPrep:
         return {'img':img}
 
     def run_generator(self, val_mode=False):
-        pics, targets, i, n = [], [], 0, 0
+        pics, targets, i, n = [], [], -1, 0
         lims = [0, self.train_portion]
         if val_mode:
             lims = [self.train_portion, None]
@@ -317,6 +317,7 @@ class QDPrep:
         N = length // self.chunksize
         while True:
             for name in self.names[lims[0]:lims[1]]:
+                i += 1
                 class_name, no = name.split('_')
                 target = self.classes[class_name]
                 coords = self.binaries[class_name][int(no)]
@@ -340,13 +341,12 @@ class QDPrep:
                 img = img[:,:,np.newaxis]
                 pics.append(img)
                 targets.append(self.OHE(target))
-                i += 1
                 if n == N and i == (length % self.chunksize):
                     yield (np.array(pics), np.array(targets))
                         
                 elif i == self.chunksize:
                     out_pics, out_target = np.array(pics), np.array(targets)
-                    pics, targets, i = [], [], 0
+                    pics, targets, i = [], [], -1
                     n += 1
                     yield (out_pics, out_target)
 
