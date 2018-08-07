@@ -377,10 +377,11 @@ if __name__ == '__main__':
 
     batch_size = 64 * G
     nbepochs = 3
+    img_size = (64,64)
     reader = QDPrep(path, [], random_state=42, chunksize=batch_size, 
                               max_dataset_size=1000000, trsh=100, normed=True,
                               train_portion=0.9, k=0.05, min_points=10, 
-                              min_edges=3, dotSize=3, offset=5, img_size=(64,64))
+                              min_edges=3, dotSize=3, offset=5, img_size=img_size)
 
     ################################################################################
 
@@ -388,13 +389,13 @@ if __name__ == '__main__':
     if G <= 1:
         print("[INFO] training with 1 GPU...")
         model = applications.mobilenetv2.MobileNetV2(
-            include_top=True, classes=nclasses, weights=None, input_tensor=Input(shape=(64,64,1)))
+            include_top=True, classes=nclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
     else:
         print("[INFO] training with {} GPUs...".format(G))
      
         with tf.device("/cpu:0"):
             model = applications.mobilenetv2.MobileNetV2(
-                include_top=True, classes=nclasses, weights=None, input_tensor=Input(shape=(64,64,1)))
+                include_top=True, classes=nclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
         model = multi_gpu_model(model, gpus=G)
 
     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, decay=0.0, clipnorm=5)
