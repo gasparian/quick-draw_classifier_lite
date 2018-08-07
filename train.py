@@ -313,7 +313,8 @@ class QDPrep:
         lims = [0, self.train_portion]
         if val_mode:
             lims = [self.train_portion, None]
-        N = len(self.names) // self.chunksize
+        length = len(self.names[lims[0]:lims[1]])
+        N = length // self.chunksize
         while True:
             for name in self.names[lims[0]:lims[1]]:
                 class_name, no = name.split('_')
@@ -340,7 +341,7 @@ class QDPrep:
                 pics.append(img)
                 targets.append(self.OHE(target))
                 i += 1
-                if n == N and i == (len(names) % self.chunksize):
+                if n == N and i == (length % self.chunksize):
                     yield (np.array(pics), np.array(targets))
                         
                 elif i == self.chunksize:
