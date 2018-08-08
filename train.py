@@ -378,7 +378,7 @@ if __name__ == '__main__':
     ################################################################################
 
     batch_size = 64 * G
-    nbepochs = 3
+    nbepochs = 15
     img_size = (64,64)
     reader = QDPrep(path, [], random_state=42, chunksize=batch_size, 
                               max_dataset_size=1000000, trsh=100, normed=True,
@@ -424,5 +424,6 @@ if __name__ == '__main__':
             validation_data=reader.run_generator(val_mode=True), validation_steps=val_steps,
             use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
+    model.save_weights(name+"/final_weights.h5")
     pickle.dump(H.history, open(name+'/loss_history.pickle.dat', 'wb'))
     print("[INFO] Finished!")
