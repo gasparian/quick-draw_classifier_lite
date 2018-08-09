@@ -161,6 +161,12 @@ class CyclicLR(Callback):
 def top_5_accuracy(x,y): 
     return top_k_categorical_accuracy(x,y, 5)
 
+def get_model(network, params):
+    if network == 'MobileNetV2':
+        return applications.mobilenetv2.MobileNetV2(**params)
+    elif network == 'InceptionV3':
+        return applications.inception_v3.InceptionV3(**params)
+
 def unpack_drawing(file_handle):
     key_id, = unpack('Q', file_handle.read(8))
     countrycode, = unpack('2s', file_handle.read(2))
@@ -380,6 +386,12 @@ if __name__ == '__main__':
     batch_size = 64 * G
     nbepochs = 15
     img_size = (64,64)
+    network = 'InceptionV3' #'InceptionV3' or 'MobileNetV2'
+    params = {
+        'include_top':True, 
+        'weights':None, 
+        'input_tensor':Input(shape=img_size+(1,))
+    }
     reader = QDPrep(path, [], random_state=42, chunksize=batch_size, 
                               max_dataset_size=1000000, trsh=100, normed=True,
                               train_portion=0.9, k=0.05, min_points=10, 
@@ -389,22 +401,20 @@ if __name__ == '__main__':
 
     # initialize model to save the graph
     nbclasses = len(reader.classes)
-    model = applications.mobilenetv2.MobileNetV2(
-        include_top=True, classes=nbclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
+    params['classes'] = nbclasses
+    model = get_model(network, params)
     model_json = model.to_json()
     with open(name+"/model.json", "w") as json_file:
         json_file.write(model_json)
 
     if G <= 1:
         print("[INFO] training with 1 GPU...")
-        model = applications.mobilenetv2.MobileNetV2(
-            include_top=True, classes=nbclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
+        model = get_model(network, params)
     else:
         print("[INFO] training with {} GPUs...".format(G))
      
         with tf.device("/cpu:0"):
-            model = applications.mobilenetv2.MobileNetV2(
-                include_top=True, classes=nbclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
+            model = get_model(network, params)
         model = multi_gpu_model(model, gpus=G)
 
     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, decay=0.0, clipnorm=5)
@@ -419,7 +429,7 @@ if __name__ == '__main__':
 
     checkpoint = ModelCheckpoint(name+'/checkpoint_weights.h5', monitor='val_loss', verbose=1, 
                      save_best_only=True, mode='min', save_weights_only=True)
-    clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps//2, mode='exp_range', gamma=0.99994)
+    clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps*2, mode='exp_range', gamma=0.99994)
 
     print("[INFO] training network...")
 
