@@ -387,17 +387,24 @@ if __name__ == '__main__':
 
     ################################################################################
 
-    nclasses = len(reader.classes)
+    # initialize model to save the graph
+    nbclasses = len(reader.classes)
+    model = applications.mobilenetv2.MobileNetV2(
+        include_top=True, classes=nbclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
+    model_json = model.to_json()
+    with open(name+"/model.json", "w") as json_file:
+        json_file.write(model_json)
+
     if G <= 1:
         print("[INFO] training with 1 GPU...")
         model = applications.mobilenetv2.MobileNetV2(
-            include_top=True, classes=nclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
+            include_top=True, classes=nbclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
     else:
         print("[INFO] training with {} GPUs...".format(G))
      
         with tf.device("/cpu:0"):
             model = applications.mobilenetv2.MobileNetV2(
-                include_top=True, classes=nclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
+                include_top=True, classes=nbclasses, weights=None, input_tensor=Input(shape=img_size+(1,)))
         model = multi_gpu_model(model, gpus=G)
 
     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, decay=0.0, clipnorm=5)
@@ -406,16 +413,13 @@ if __name__ == '__main__':
 
     with open(name + '/model_summary.txt','w') as f:
             model.summary(print_fn=lambda x: f.write(x + '\n'))
-    model_json = model.to_json()
-    with open(name+"/model.json", "w") as json_file:
-        json_file.write(model_json)
 
     train_steps = reader.train_portion // batch_size
     val_steps = (reader.max_dataset_size - reader.train_portion) // batch_size
 
     checkpoint = ModelCheckpoint(name+'/checkpoint_weights.h5', monitor='val_loss', verbose=1, 
                      save_best_only=True, mode='min', save_weights_only=True)
-    clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps*2, mode='exp_range', gamma=0.99994)
+    clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps//2, mode='exp_range', gamma=0.99994)
 
     print("[INFO] training network...")
 
@@ -425,5 +429,6 @@ if __name__ == '__main__':
             use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
     model.save_weights(name+"/final_weights.h5")
+    model.save(name+"/final_model.h5")
     pickle.dump(H.history, open(name+'/loss_history.pickle.dat', 'wb'))
     print("[INFO] Finished!")
