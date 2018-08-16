@@ -357,6 +357,14 @@ class QDPrep:
                     n += 1
                     yield (out_pics, out_target)
 
+def save_single_model(path):
+    sinlge_model = multi_model.layers[-2]
+    sinlge_model.save(path+'/single_gpu_model.hdf5')
+    model_json = sinlge_model.to_json()
+    with open(path+"/single_gpu_model.json", "w") as json_file:
+        json_file.write(model_json)
+    sinlge_model.save_weights(path+"/single_gpu_weights.h5")
+
 from tensorflow.python.client import device_lib
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
@@ -402,24 +410,23 @@ if __name__ == '__main__':
     # initialize model to save the graph
     nbclasses = len(reader.classes)
     params['classes'] = nbclasses
-    model = get_model(network, params)
-    model_json = model.to_json()
-    with open(name+"/model.json", "w") as json_file:
-        json_file.write(model_json)
 
     if G <= 1:
         print("[INFO] training with 1 GPU...")
         model = get_model(network, params)
+        model_json = model.to_json()
+        with open(name+"/model.json", "w") as json_file:
+            json_file.write(model_json)
     else:
         print("[INFO] training with {} GPUs...".format(G))
      
         with tf.device("/cpu:0"):
             model = get_model(network, params)
-        model = multi_gpu_model(model, gpus=G)
+        multi_model = multi_gpu_model(model, gpus=G)
 
     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, decay=0.0, clipnorm=5)
-    model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=["accuracy", top_5_accuracy])
-    model.summary()
+    multi_model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=["accuracy", top_5_accuracy])
+    multi_model.summary()
 
     with open(name + '/model_summary.txt','w') as f:
             model.summary(print_fn=lambda x: f.write(x + '\n'))
@@ -428,17 +435,22 @@ if __name__ == '__main__':
     val_steps = (reader.max_dataset_size - reader.train_portion) // batch_size
 
     checkpoint = ModelCheckpoint(name+'/checkpoint_weights.h5', monitor='val_loss', verbose=1, 
-                     save_best_only=True, mode='min', save_weights_only=True)
+                     save_best_only=True, mode='min', save_weights_only=False)
     clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps*2, mode='exp_range', gamma=0.99994)
 
     print("[INFO] training network...")
 
-    H = model.fit_generator(reader.run_generator(val_mode=False),
+    H = multi_model.fit_generator(reader.run_generator(val_mode=False),
             steps_per_epoch=train_steps, epochs=nbepochs, shuffle=False, verbose=1,
             validation_data=reader.run_generator(val_mode=True), validation_steps=val_steps,
             use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
-    model.save_weights(name+"/final_weights.h5")
-    model.save(name+"/final_model.h5")
+    multi_model.save_weights(name+"/final_weights.h5")
+    multi_model.save(name+"/final_model.h5")
+
+    if G > 1:
+        #save "single" model graph and weights
+        save_single_model(name)
+
     pickle.dump(H.history, open(name+'/loss_history.pickle.dat', 'wb'))
     print("[INFO] Finished!")
