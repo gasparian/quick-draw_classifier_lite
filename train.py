@@ -407,7 +407,6 @@ if __name__ == '__main__':
 
     ################################################################################
 
-    # initialize model to save the graph
     nbclasses = len(reader.classes)
     params['classes'] = nbclasses
 
@@ -434,7 +433,7 @@ if __name__ == '__main__':
     train_steps = reader.train_portion // batch_size
     val_steps = (reader.max_dataset_size - reader.train_portion) // batch_size
 
-    checkpoint = ModelCheckpoint(name+'/checkpoint_weights.h5', monitor='val_loss', verbose=1, 
+    checkpoint = ModelCheckpoint(name+'/checkpoint_weights.hdf5', monitor='val_loss', verbose=1, 
                      save_best_only=True, mode='min', save_weights_only=False)
     clr = CyclicLR(base_lr=0.001, max_lr=0.006, step_size=train_steps*2, mode='exp_range', gamma=0.99994)
 
@@ -446,7 +445,7 @@ if __name__ == '__main__':
             use_multiprocessing=False, workers=1, callbacks=[checkpoint, clr])
 
     multi_model.save_weights(name+"/final_weights.h5")
-    multi_model.save(name+"/final_model.h5")
+    multi_model.save(name+"/final_model.hdf5")
 
     if G > 1:
         #save "single" model graph and weights
