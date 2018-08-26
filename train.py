@@ -10,8 +10,7 @@ import tensorflow as tf
 import numpy as np
 from numpy.random import RandomState
 import cv2
-from PIL import Image
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
 from tqdm import tqdm
 
 # import matplotlib.pyplot as plt
