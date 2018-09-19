@@ -411,8 +411,8 @@ if __name__ == '__main__':
 
     if G <= 1:
         print("[INFO] training with 1 GPU...")
-        model = get_model(network, params)
-        model_json = model.to_json()
+        multi_model = get_model(network, params)
+        model_json = multi_model.to_json()
         with open(name+"/model.json", "w") as json_file:
             json_file.write(model_json)
     else:
@@ -427,7 +427,7 @@ if __name__ == '__main__':
     multi_model.summary()
 
     with open(name + '/model_summary.txt','w') as f:
-            model.summary(print_fn=lambda x: f.write(x + '\n'))
+            multi_model.summary(print_fn=lambda x: f.write(x + '\n'))
 
     train_steps = reader.train_portion // batch_size
     val_steps = (reader.max_dataset_size - reader.train_portion) // batch_size
